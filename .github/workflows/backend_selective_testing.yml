@@ -10,31 +10,50 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  files-changed:
-    name: detect what files changed
+#   files-changed:
+#     name: detect what files changed
+#     runs-on: ubuntu-24.04
+#     timeout-minutes: 3
+#     # Map a step output to a job output
+#     outputs:
+#       api_docs: ${{ steps.changes.outputs.api_docs }}
+#       backend: ${{ steps.changes.outputs.backend_all }}
+#       backend_dependencies: ${{ steps.changes.outputs.backend_dependencies }}
+#       backend_api_urls: ${{ steps.changes.outputs.backend_api_urls }}
+#       backend_any_type: ${{ steps.changes.outputs.backend_any_type }}
+#       migration_lockfile: ${{ steps.changes.outputs.migration_lockfile }}
+#     steps:
+#       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+#
+#       - name: Check for backend file changes
+#         uses: dorny/paths-filter@0bc4621a3135347011ad047f9ecf449bf72ce2bd # v3.0.0
+#         id: changes
+#         with:
+#           token: ${{ github.token }}
+#           filters: .github/file-filters.yml
+
+  select-tests:
+    #if: needs.files-changed.outputs.backend == 'true'
+    #needs: files-changed
+    name: select tests
     runs-on: ubuntu-24.04
-    timeout-minutes: 3
-    # Map a step output to a job output
+    timeout-minutes: 5
     outputs:
-      api_docs: ${{ steps.changes.outputs.api_docs }}
-      backend: ${{ steps.changes.outputs.backend_all }}
-      backend_dependencies: ${{ steps.changes.outputs.backend_dependencies }}
-      backend_api_urls: ${{ steps.changes.outputs.backend_api_urls }}
-      backend_any_type: ${{ steps.changes.outputs.backend_any_type }}
-      migration_lockfile: ${{ steps.changes.outputs.migration_lockfile }}
+      shard-count: ${{ steps.calculate-shards.outputs.shard-count }}
+      shard-indices: ${{ steps.calculate-shards.outputs.shard-indices }}
+
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
-      - name: Check for backend file changes
-        uses: dorny/paths-filter@0bc4621a3135347011ad047f9ecf449bf72ce2bd # v3.0.0
-        id: changes
-        with:
-          token: ${{ github.token }}
-          filters: .github/file-filters.yml
+      - name: Select Tests
+        id: select-tests
+        run: |
+          python3 .github/workflows/scripts/select-tests.py
 
   backend-test-selective:
-    if: needs.files-changed.outputs.backend == 'true'
-    needs: files-changed
+    #if: needs.files-changed.outputs.backend == 'true'
+    #needs: files-changed
+    needs: select-tests
     name: backend test
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -45,10 +64,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        instance: [0]
+        instance: ${{ fromJSON(needs.select-tests.outputs.shard-indices) }}
 
     env:
-      MATRIX_INSTANCE_TOTAL: 1
+      MATRIX_INSTANCE_TOTAL: ${{ needs.select-tests.outputs.shard-count }}
 
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
