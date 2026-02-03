@@ -3,7 +3,7 @@ from __future__ import annotations
 import builtins
 import logging
 from enum import StrEnum
-from typing import ClassVar, TypedDict
+from typing import Any, ClassVar, TypedDict
 
 from django.db import models
 from django.db.models import Q
@@ -54,7 +54,7 @@ class Action(DefaultFieldsModel, JSONConfigBase):
     __repr__ = sane_repr("id", "type")
 
     objects: ClassVar[ActionManager] = ActionManager()
-    objects_for_deletion: ClassVar[BaseManager] = BaseManager()
+    objects_for_deletion: ClassVar[BaseManager[Action]] = BaseManager()
 
     class Type(StrEnum):
         SLACK = "slack"
@@ -180,7 +180,7 @@ class Action(DefaultFieldsModel, JSONConfigBase):
 
 
 @receiver(pre_save, sender=Action)
-def enforce_config_schema(sender, instance: Action, **kwargs):
+def enforce_config_schema(sender: type[Action], instance: Action, **kwargs: Any) -> None:
     handler = instance.get_handler()
 
     config_schema = handler.config_schema

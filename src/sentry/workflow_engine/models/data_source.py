@@ -1,7 +1,7 @@
 import builtins
 import dataclasses
 import logging
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 from django.db import models
 from django.db.models.signals import pre_save
@@ -57,7 +57,7 @@ class DataSource(DefaultFieldsModel):
         ]
 
     @property
-    def type_handler(self) -> builtins.type[DataSourceTypeHandler]:
+    def type_handler(self) -> builtins.type[DataSourceTypeHandler[Any]]:
         handler = data_source_type_registry.get(self.type)
         if not handler:
             raise ValueError(f"Unknown data source type: {self.type}")
@@ -93,7 +93,9 @@ class DataSource(DefaultFieldsModel):
 
 
 @receiver(pre_save, sender=DataSource)
-def ensure_type_handler_registered(sender, instance: DataSource, **kwargs):
+def ensure_type_handler_registered(
+    sender: type[DataSource], instance: DataSource, **kwargs: Any
+) -> None:
     """
     Ensure that the type of the data source is valid and registered in the data_source_type_registry
     """

@@ -67,7 +67,7 @@ class Detector(DefaultFieldsModel, OwnerModel, JSONConfigBase):
     __relocation_scope__ = RelocationScope.Organization
 
     objects: ClassVar[DetectorManager] = DetectorManager()
-    objects_for_deletion: ClassVar[BaseManager] = BaseManager()
+    objects_for_deletion: ClassVar[BaseManager[Detector]] = BaseManager()
 
     project = FlexibleForeignKey("sentry.Project", on_delete=models.CASCADE)
     name = models.CharField(max_length=200)
@@ -146,7 +146,7 @@ class Detector(DefaultFieldsModel, OwnerModel, JSONConfigBase):
         return group_type
 
     @property
-    def detector_handler(self) -> DetectorHandler | None:
+    def detector_handler(self) -> DetectorHandler[Any, Any] | None:
         group_type = self.group_type
 
         if self.settings.handler is None:
@@ -234,7 +234,7 @@ def enforce_config_schema(instance: Detector) -> None:
 
 
 @receiver(pre_save, sender=Detector)
-def enforce_config_schema_signal(sender, instance: Detector, **kwargs):
+def enforce_config_schema_signal(sender: type[Detector], instance: Detector, **kwargs: Any) -> None:
     """
     This needs to be a signal because the grouptype registry's entries are not available at import time.
     """

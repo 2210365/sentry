@@ -56,7 +56,7 @@ class Workflow(DefaultFieldsModel, OwnerModel, JSONConfigBase):
     __relocation_scope__ = RelocationScope.Organization
 
     objects: ClassVar[WorkflowManager] = WorkflowManager()
-    objects_for_deletion: ClassVar[BaseManager] = BaseManager()
+    objects_for_deletion: ClassVar[BaseManager[Workflow]] = BaseManager()
 
     name = models.CharField(max_length=256)
     organization = FlexibleForeignKey("sentry.Organization")
@@ -171,5 +171,5 @@ def get_slow_conditions(workflow: Workflow) -> list[DataCondition]:
 
 
 @receiver(pre_save, sender=Workflow)
-def enforce_config_schema(sender, instance: Workflow, **kwargs):
+def enforce_config_schema(sender: type[Workflow], instance: Workflow, **kwargs: Any) -> None:
     instance.validate_config(instance.config_schema)

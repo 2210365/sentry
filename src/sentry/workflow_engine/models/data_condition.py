@@ -270,5 +270,7 @@ def enforce_data_condition_json_schema(data_condition: DataCondition) -> None:
 
 
 @receiver(pre_save, sender=DataCondition)
-def enforce_comparison_schema(sender, instance: DataCondition, **kwargs):
+def enforce_comparison_schema(
+    sender: type[DataCondition], instance: DataCondition, **kwargs: Any
+) -> None:
     enforce_data_condition_json_schema(instance)
