@@ -17,3 +17,6 @@ class CacheAccess[T]:
 
     def set(self, value: T, timeout: float | None) -> None:
         cache.set(self.key(), value, timeout)
+
+    def delete(self) -> bool:
+        return cache.delete(self.key())
