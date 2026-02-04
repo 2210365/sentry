@@ -1,30 +1,19 @@
 import type React from 'react';
-import {useCallback, useEffect, useState} from 'react';
 import styled from '@emotion/styled';
 import classNames from 'classnames';
-import * as qs from 'query-string';
 
 import {Tooltip, type TooltipProps} from '@sentry/scraps/tooltip';
-
-import type {Avatar as AvatarType} from 'sentry/types/core';
 
 // eslint-disable-next-line no-relative-import-paths/no-relative-import-paths
 import {Gravatar} from '../gravatar/gravatar';
 // eslint-disable-next-line no-relative-import-paths/no-relative-import-paths
+import {ImageAvatar} from '../imageAvatar/imageAvatar';
+// eslint-disable-next-line no-relative-import-paths/no-relative-import-paths
 import {LetterAvatar} from '../letterAvatar/letterAvatar';
-
-import {baseAvatarStyles, type BaseAvatarStyleProps} from './baseAvatarComponentStyles';
 
 const DEFAULT_REMOTE_SIZE = 120;
 
-export interface BaseAvatarProps extends React.HTMLAttributes<HTMLSpanElement> {
-  /**
-   * The component to render if the selected avatar type cannot be rendered.
-   * For Gravatar this may happen if the gravatar cannot be loaded, for
-   * uploaded avatars this will happen when no uploadUrl is provided.
-   */
-  backupAvatar?: React.ReactNode;
-  gravatarId?: string;
+export interface AvatarProps extends React.HTMLAttributes<HTMLSpanElement> {
   /**
    * Enable to display tooltips.
    */
@@ -46,99 +35,71 @@ export interface BaseAvatarProps extends React.HTMLAttributes<HTMLSpanElement> {
    * Additional props for the tooltip
    */
   tooltipOptions?: Omit<TooltipProps, 'children' | 'title'>;
-  /**
-   * The type of avatar being rendered.
-   */
-  type?: AvatarType['avatarType'];
-  /**
-   * Full URL to the uploaded avatar's image.
-   */
-  uploadUrl?: string | null;
 }
 
-export function BaseAvatar({
-  backupAvatar,
+export interface GravatarBaseAvatarProps extends AvatarProps {
+  gravatarId: string;
+  type: 'gravatar';
+}
+
+export interface LetterBaseAvatarProps extends AvatarProps {
+  letterId: string;
+  type: 'letter_avatar';
+}
+
+export interface UploadBaseAvatarProps extends AvatarProps {
+  type: 'upload';
+  uploadUrl: string;
+}
+
+function Avatar({
   className,
-  gravatarId,
-  letterId,
   size,
   style,
-  suggested,
   title,
   tooltip,
   tooltipOptions,
-  uploadUrl,
   hasTooltip = false,
   round = false,
-  type = 'letter_avatar',
   ref,
   ...props
-}: BaseAvatarProps) {
-  const [hasError, setError] = useState<boolean | null>(null);
-
-  // Reset loading errors when avatar type changes
-  useEffect(() => setError(null), [type]);
-
-  const handleError = useCallback(() => setError(true), []);
-  const handleLoad = useCallback(() => setError(false), []);
-
-  const showBackup = hasError || (type === 'upload' && !uploadUrl);
-
+}: GravatarBaseAvatarProps | LetterBaseAvatarProps | UploadBaseAvatarProps) {
   return (
     <Tooltip title={tooltip} disabled={!hasTooltip} {...tooltipOptions} skipWrapper>
       <AvatarContainer
         ref={ref as React.Ref<HTMLSpanElement>}
-        data-test-id={`${type}-avatar`}
+        data-test-id={`${props.type}-avatar`}
         className={classNames('avatar', className)}
         round={!!round}
-        suggested={!!suggested}
+        suggested={!!props.suggested}
         style={{...(size ? {height: size, width: size} : {}), ...style}}
         title={title}
         {...props}
       >
-        {showBackup ? (
-          (backupAvatar ?? (
-            <LetterAvatar
-              ref={ref as React.Ref<SVGSVGElement>}
-              round={round}
-              displayName={title === '[Filtered]' ? '?' : title}
-              identifier={letterId}
-              suggested={suggested}
-            />
-          ))
-        ) : type === 'upload' ? (
+        {props.type === 'upload' ? (
           <ImageAvatar
-            ref={ref as React.Ref<HTMLImageElement>}
-            // Don't add remote size query parameter if we have a data url
-            src={
-              uploadUrl
-                ? uploadUrl.startsWith('data:')
-                  ? uploadUrl
-                  : `${uploadUrl}?${qs.stringify({s: DEFAULT_REMOTE_SIZE})}`
-                : undefined
-            }
             round={round}
-            suggested={suggested}
-            onLoad={handleLoad}
-            onError={handleError}
+            alt={title ?? ''}
+            ref={ref as React.Ref<HTMLImageElement>}
+            src={props.uploadUrl}
+            suggested={props.suggested}
           />
-        ) : type === 'gravatar' ? (
+        ) : props.type === 'gravatar' ? (
           <Gravatar
             ref={ref as React.Ref<HTMLImageElement>}
-            gravatarId={gravatarId ?? ''}
-            remoteSize={DEFAULT_REMOTE_SIZE}
             round={round}
-            suggested={suggested}
-            onLoad={handleLoad}
-            onError={handleError}
+            title={title ?? ''}
+            gravatarId={props.gravatarId}
+            remoteSize={DEFAULT_REMOTE_SIZE}
+            suggested={props.suggested}
           />
         ) : (
           <LetterAvatar
             ref={ref as React.Ref<SVGSVGElement>}
             round={round}
             displayName={title === '[Filtered]' ? '?' : title}
-            identifier={letterId}
-            suggested={suggested}
+            identifier={props.letterId}
+            suggested={props.suggested}
           />
         )}
       </AvatarContainer>
@@ -157,8 +118,4 @@ const AvatarContainer = styled('span')<{
   border: ${p =>
     p.suggested ? `1px dashed ${p.theme.tokens.border.neutral.vibrant}` : 'none'};
   background-color: ${p => (p.suggested ? p.theme.tokens.background.primary : 'none')};
-`;
-
-const ImageAvatar = styled('img')<BaseAvatarStyleProps>`
-  ${baseAvatarStyles};
 `;
